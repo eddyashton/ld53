@@ -88,26 +88,16 @@ function _init()
   [3] = left
  }
  
- roads = {}
- trees = {}
- buildings = {}
+ road = 6
+ tree = 3
+ building = 5
+ world = {}
  for y=0,15 do
-  local road_row = {}
-  local buildings_row = {}
-  local trees_row = {}
+  local world_row = {}
   for x=0,15 do
-   local v = sget(x+112, y+48)
-   if v == 6 then
-    road_row[x] = true
-   elseif v == 3 then
-    trees_row[x] = true
-   elseif v == 5 then
-    buildings_row[x] = true
-   end
+   world_row[x] = sget(x+112, y+48)
   end
-  if (next(road_row) != nil) roads[y] = road_row
-  if (next(buildings_row) != nil) buildings[y] = buildings_row
-  if (next(trees_row) != nil) trees[y] = trees_row
+  world[y] = world_row
  end
  
  paths = {}
@@ -116,40 +106,42 @@ function _init()
   paths[py][px] = true
  end
 
- for cy, row in pairs(roads) do
-  for cx, _ in pairs(row) do
-   local x,y = 8*cx,8*cy
-   local cl,cr = adjacent_with_wrap(cx)
-   local cu,cd = adjacent_with_wrap(cy)
-   if row[cl] then
-    local py = y+3
-    add_path(x,py)
-    add_path(x+1,py)
-    add_path(x+2,py)
-    add_path(x+3,py)
-   end
-   if roads[cu] and roads[cu][cx] then
-    local px = x+3
-    add_path(px,y)
-    add_path(px,y+1)
-    add_path(px,y+2)
-    add_path(px,y+3)
-   end
-   if row[cr] then
-    local py = y+3
-    add_path(x+3,py)
-    add_path(x+4,py)
-    add_path(x+5,py)
-    add_path(x+6,py)
-    add_path(x+7,py)
-   end
-   if roads[cd] and roads[cd][cx] then
-    local px = x+3
-    add_path(px,y+3)
-    add_path(px,y+4)
-    add_path(px,y+5)
-    add_path(px,y+6)
-    add_path(px,y+7)
+ for cy, row in pairs(world) do
+  for cx, cell in pairs(row) do
+   if cell == road then
+    local x,y = 8*cx,8*cy
+    local cl,cr = adjacent_with_wrap(cx)
+    local cu,cd = adjacent_with_wrap(cy)
+    if row[cl] == road then
+      local py = y+3
+      add_path(x,py)
+      add_path(x+1,py)
+      add_path(x+2,py)
+      add_path(x+3,py)
+    end
+    if world[cu][cx] == road then
+      local px = x+3
+      add_path(px,y)
+      add_path(px,y+1)
+      add_path(px,y+2)
+      add_path(px,y+3)
+    end
+    if row[cr] == road then
+      local py = y+3
+      add_path(x+3,py)
+      add_path(x+4,py)
+      add_path(x+5,py)
+      add_path(x+6,py)
+      add_path(x+7,py)
+    end
+    if world[cd][cx] == road then
+      local px = x+3
+      add_path(px,y+3)
+      add_path(px,y+4)
+      add_path(px,y+5)
+      add_path(px,y+6)
+      add_path(px,y+7)
+    end
    end
   end
  end
@@ -242,21 +234,29 @@ function draw_truck(truck)
  )
 end
 
-function draw_roads()
- -- border hedges
- for cy, row in pairs(roads) do
-  for cx, _ in pairs(row) do
- 	 local x,y = 8*cx, 8*cy
-	  rect(
-    x-1,y-1,
-    x+7,y+7,
-    3
-   )
+function draw_world()
+ -- draw trees, buildings, and road borders
+ for cy, row in pairs(world) do
+  for cx, cell in pairs(row) do
+   local x,y = 8*cx,8*cy
+   if cell == building then
+    spr(9, x, y, 1,1,(x + y*3)%2 == 1)
+   elseif cell == tree then
+    spr(8, x, y, 1,1)
+   elseif cell == road then
+    rect(
+     x-1,y-1,
+     x+7,y+7,
+     3
+    )
+   end
   end
  end
 
- for cy,row in pairs(roads) do
-  for cx, _ in pairs(row) do
+ -- now draw roads
+ for cy,row in pairs(world) do
+  for cx, cell in pairs(row) do
+    if cell == road then
 	  -- tarmac
  	 local x,y = 8*cx, 8*cy
 	  rectfill(
@@ -269,39 +269,26 @@ function draw_roads()
    --- left
    local cl,cr = adjacent_with_wrap(cx)
    local cu,cd = adjacent_with_wrap(cy)
-   if row[cl] then
+   if row[cl] == road then
     line(x,y+3,x+2,y+3,7)
    end
    --- up
-   if roads[cu] and roads[cu][cx] then
+   if world[cu][cx] == road then
     line(x+3,y,x+3,y+2,7)
    end
    --- right
-   if row[cr] then
+   if row[cr] == road then
     line(x+4,y+3,x+6,y+3,7)
     --- patch tarmac
     line(x+7,y,x+7,y+6,6)
    end
    -- down
-   if roads[cd] and roads[cd][cx] then
+   if world[cd][cx] == road then
     line(x+3,y+4,x+3,y+6,7)
     --- patch tarmac
     line(x,y+7,x+6,y+7,6)
    end
 	 end
- end
-end
-
-function draw_world()
- for y, row in pairs(buildings) do
-  for x, _ in pairs(row) do
-   spr(9, 8*x, 8*y, 1,1,(x + y*3)%2 == 1)
-  end
- end
- 
- for y, row in pairs(trees) do
-  for x, _ in pairs(row) do
-   spr(8, 8*x, 8*y, 1,1)
   end
  end
 end
@@ -309,8 +296,6 @@ end
 function _draw()
  cls(11)
  pal()
- 
- draw_roads()
  
  draw_world()
 
