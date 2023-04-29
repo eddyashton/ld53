@@ -75,9 +75,19 @@ function sspr_args(pos,dir)
 end
 
 function draw_truck(truck)
+ pal()
  palt(0, false)
  local pos = truck.pos
  local dir = truck.dir
+ local truck_colour = 8
+ if truck.is_blue then
+  -- swap red to blue
+  pal(8, 12)
+  truck_colour = 12
+ end
+ if truck.full then
+  pal(7, truck_colour)
+ end
  sspr(
   unpack(
    sspr_args(truck.pos, truck.dir)
