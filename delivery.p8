@@ -530,11 +530,12 @@ function draw_world()
   pal()
   cls(11)
 
-  function for_each_cell(fn, kind)
+  function for_each_cell(fn, filter)
     for cy, row in pairs(world) do
-     for cx, cell in pairs(row) do
-      if kind == nil or cell == kind then
-       fn(cx, cy, cell, row)
+     for cx, kind in pairs(row) do
+      if filter == nil or filter == kind then
+       local v = cell_to_world(v2(cx,cy))
+       fn(v.x, v.y, kind, cx, cy, row)
       end
      end
     end
@@ -542,9 +543,7 @@ function draw_world()
 
   -- draw water
   for_each_cell(
-   function(cx,cy,cell)
-    local v = cell_to_world(v2(cx,cy))
-    local x,y = v.x,v.y
+   function(x,y)
     rectfill(x,y,x+8,y+8,12)
    end,
    water
@@ -552,11 +551,10 @@ function draw_world()
 
   -- then road edge hedges
   for_each_cell(
-   function(cx,cy,cell)
-    local v = cell_to_world(v2(cx,cy))
+   function(x,y)
     rect(
-     v.x-1,v.y-1,
-     v.x+7,v.y+7,
+     x-1,y-1,
+     x+7,y+7,
      3
     )
    end,
@@ -565,9 +563,7 @@ function draw_world()
 
   -- draw parks, buildings, and roads
   for_each_cell(
-   function(cx,cy,cell,row)
-    local v = cell_to_world(v2(cx,cy))
-    local x,y = v.x,v.y
+   function(x,y,cell,cx,cy,row)
     if cell == building then
      spr(9, x, y, 1,1,(x + y*3)%2 == 1)
     elseif cell == park then
@@ -587,15 +583,14 @@ function draw_world()
     end
 
     if cell == road then
-      -- tarmac
-      local x,y = 8*cx, 8*cy
-      rectfill(
-        x,y,
-        x+6,y+6,
-        6
-      )
+     -- tarmac
+     rectfill(
+      x,y,
+      x+6,y+6,
+      6
+     )
    
-      -- white lines
+     -- white lines
      --- left
      local cl,cr = adjacent_with_wrap(cx)
      local cu,cd = adjacent_with_wrap(cy)
