@@ -121,17 +121,17 @@ function draw_truck(truck)
 end
 
 function draw_roads()
- --[[
  -- border hedges
- for road in all(roads) do
-  local x,y = 8*road.x, 8*road.y
-  rect(
-   x-1,y-1,
-   x+7,y+7,
-   3
-  )
+ for cy, row in pairs(roads) do
+  for cx, _ in pairs(row) do
+ 	 local x,y = 8*cx, 8*cy
+	  rect(
+    x-1,y-1,
+    x+7,y+7,
+    3
+   )
+  end
  end
- ]]--
 
  for cy,row in pairs(roads) do
   for cx, _ in pairs(row) do
