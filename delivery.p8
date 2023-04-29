@@ -9,6 +9,14 @@ function v2_add(_v1,_v2)
  return v2(_v1.x+_v2.x, _v1.y+_v2.y)
 end
 
+function v_to_s(_v)
+ return _v.x..",".._v.y
+end
+
+function s_to_v(_s)
+ return v2(unpack(split(_s,",")))
+end
+
 function rnd_el(_t)
  local ar = {}
  print(_t)
@@ -44,6 +52,7 @@ function try_move(tr)
 end
 
 function _update()
+ --[[
  -- manual control of first truck
  local tr = trucks[1]
  if (btnp(⬆️)) tr.dir_idx = 0
@@ -56,6 +65,13 @@ function _update()
  if (btnp(⬆️) or btnp(➡️) or btnp(⬇️) or btnp(⬅️)) then
   try_move(tr)
  end
+ ]]--
+ 
+ local from_here = crossings_graph[v_to_s(target)]
+ if (btnp(➡️)) target = from_here.➡️
+ if (btnp(⬅️)) target = from_here.⬅️
+ if (btnp(⬆️)) target = from_here.⬆️
+ if (btnp(⬇️)) target = from_here.⬇️
  
  if t() >= update_at then
   for tr in all(trucks) do
@@ -71,16 +87,127 @@ function _update()
  end
 end
 
+function build_paths()
+ crossings = {}
+ paths = {}
+ function add_path(px,py)
+  if (not paths[py]) paths[py] = {}
+  paths[py][px] = true
+ end
+ 
+ for cy, row in pairs(world) do
+  for cx, cell in pairs(row) do
+   if cell == road then
+    local x,y = 8*cx,8*cy
+    local cl,cr = adjacent_with_wrap(cx)
+    local cu,cd = adjacent_with_wrap(cy)
+    local neighbours = 0
+    if row[cl] == road then
+      local py = y+3
+      add_path(x,py)
+      add_path(x+1,py)
+      add_path(x+2,py)
+      add_path(x+3,py)
+      neighbours += 1
+    end
+    if world[cu][cx] == road then
+      local px = x+3
+      add_path(px,y)
+      add_path(px,y+1)
+      add_path(px,y+2)
+      add_path(px,y+3)
+      neighbours += 1
+    end
+    if row[cr] == road then
+      local py = y+3
+      add_path(x+3,py)
+      add_path(x+4,py)
+      add_path(x+5,py)
+      add_path(x+6,py)
+      add_path(x+7,py)
+      neighbours += 1
+    end
+    if world[cd][cx] == road then
+      local px = x+3
+      add_path(px,y+3)
+      add_path(px,y+4)
+      add_path(px,y+5)
+      add_path(px,y+6)
+      add_path(px,y+7)
+      neighbours += 1
+    end
+
+    if neighbours > 2 then
+     add(crossings, v2(cx, cy))
+    end
+   end
+  end
+ end
+
+ target = crossings[next(crossings, nil)]
+end
+
+function build_crossings_graph()
+ crossings_graph = {}
+ 
+ function follow_road(from, adj)
+  local cx,cy = adj.x, adj.y
+  local cl,cr = adjacent_with_wrap(cx)
+  local cu,cd = adjacent_with_wrap(cy)
+  local row = world[cy]
+  local neighbours = {}
+  if row[cl] == road then
+   add(neighbours, v_to_s(v2(cl, cy)))
+  end
+  if world[cu][cx] == road then
+   add(neighbours, v_to_s(v2(cx, cu)))
+  end
+  if row[cr] == road then
+   add(neighbours, v_to_s(v2(cr, cy)))
+  end
+  if world[cd][cx] == road then
+   add(neighbours, v_to_s(v2(cx, cd)))
+  end
+  del(neighbours, v_to_s(from))
+  
+  if #neighbours == 1 then
+   return follow_road(
+   	adj,
+   	s_to_v(neighbours[1])
+   )
+  elseif #neighbours == 0 then
+   return nil
+  else
+   return adj
+  end
+ end
+ 
+ -- todo: should also try straight
+ -- line raytrace
+ function find_next(from, dir)
+  local adj = v2_add(from, dir)
+  if world[adj.y][adj.x] == road then
+   local cross = follow_road(from, adj)
+   if cross != nil then
+    return cross
+   end
+  end
+  return from
+ end
+
+ for i, crossing in ipairs(crossings) do
+  crossings_graph[v_to_s(crossing)] = {
+   ➡️ = find_next(crossing, right),
+   ⬅️ = find_next(crossing, left),
+   ⬆️ = find_next(crossing, up),
+   ⬇️ = find_next(crossing, down),
+  }
+ end
+end
+
 _screen_start = 0x6000
 _screen_size = 0x2000
 _data_start = 0x8000
-
-_worlds = {
- --{"test", v2(64, 48)},
- {"town", v2(112, 48)},
- {"lake", v2(80, 48)},
- {"grid", v2(96,48)},
-}
 
 function init_new_world()
  local offs = _worlds[selected_world][2]
@@ -98,52 +225,9 @@ function init_new_world()
   _screen_start,
   _screen_size
  )
- 
- paths = {}
- function add_path(px,py)
-  if (not paths[py]) paths[py] = {}
-  paths[py][px] = true
- end
 
- for cy, row in pairs(world) do
-  for cx, cell in pairs(row) do
-   if cell == road then
-    local x,y = 8*cx,8*cy
-    local cl,cr = adjacent_with_wrap(cx)
-    local cu,cd = adjacent_with_wrap(cy)
-    if row[cl] == road then
-      local py = y+3
-      add_path(x,py)
-      add_path(x+1,py)
-      add_path(x+2,py)
-      add_path(x+3,py)
-    end
-    if world[cu][cx] == road then
-      local px = x+3
-      add_path(px,y)
-      add_path(px,y+1)
-      add_path(px,y+2)
-      add_path(px,y+3)
-    end
-    if row[cr] == road then
-      local py = y+3
-      add_path(x+3,py)
-      add_path(x+4,py)
-      add_path(x+5,py)
-      add_path(x+6,py)
-      add_path(x+7,py)
-    end
-    if world[cd][cx] == road then
-      local px = x+3
-      add_path(px,y+3)
-      add_path(px,y+4)
-      add_path(px,y+5)
-      add_path(px,y+6)
-      add_path(px,y+7)
-    end
-   end
-  end
- end
+ build_paths()
+ build_crossings_graph()
  
  function mk_truck(b,p,d,f)
   return {
@@ -155,7 +239,7 @@ function init_new_world()
  end
 
  trucks = {
-  mk_truck(false, v2(73,80), 1),
+--  mk_truck(false, v2(73,80), 1),
  }
  
 	-- randomly place some trucks on the paths
@@ -173,36 +257,6 @@ function init_new_world()
 	  )
 	 )
 	end
-end
-
-function add_level_select_menu_item()
- local world_name = _worlds[selected_world][1]
- menuitem(2, "⬅️ "..world_name.." ➡️", level_select)
-end
-
-function level_select(b)
- if b&1 > 0 then
-  selected_world -= 1
-  if selected_world < 1 then
-   selected_world = #_worlds
-  end
-  add_level_select_menu_item()
-  return true
- end
- 
- if b&2 > 0 then
-  selected_world += 1
-  if selected_world > #_worlds then
-   selected_world = 1
-  end
-  add_level_select_menu_item()
-  return true
- end
-
- if b&32 > 0 then
-  init_new_world()
-  return false
- end
 end
 
 function _init()
@@ -290,6 +344,10 @@ function draw_truck(truck)
  )
 end
 
+function crossing_centre(v)
+ return v2(v.x*8 + 3, v.y*8 + 3)
+end
+
 function _draw()
 	cls()
 	pal()
@@ -301,20 +359,28 @@ function _draw()
   _screen_size
  )
  
+ -- draw all trucks
+ for truck in all(trucks) do
+  draw_truck(truck)
+ end
+ 
  -- debug drawing
- if false then
+ if true then
 		-- debug draw paths
 		for y, row in pairs(paths) do
 		 for x, _ in pairs(row) do
 		  pset(x,y,10)
 		 end
 		end
+		
+		for v in all(crossings) do
+   local c = crossing_centre(v)
+		 circ(c.x,c.y, 3, 15)
+		end
+
+		local targ = crossing_centre(target)
+	 circfill(targ.x, targ.y, 3, 15)
 	end
- 
- -- draw all trucks
- for truck in all(trucks) do
-  draw_truck(truck)
- end
  
  -- debug printing
  color(0)
@@ -420,6 +486,45 @@ function draw_world()
   end
  end
 
+-->8
+-- level select
+_worlds = {
+  --{"test", v2(64, 48)},
+  {"town", v2(112, 48)},
+  {"lake", v2(80, 48)},
+  {"grid", v2(96,48)},
+ }
+
+function add_level_select_menu_item()
+  local world_name = _worlds[selected_world][1]
+  menuitem(2, "⬅️ "..world_name.." ➡️", level_select)
+ end
+ 
+ function level_select(b)
+  if b&1 > 0 then
+   selected_world -= 1
+   if selected_world < 1 then
+    selected_world = #_worlds
+   end
+   add_level_select_menu_item()
+   return true
+  end
+  
+  if b&2 > 0 then
+   selected_world += 1
+   if selected_world > #_worlds then
+    selected_world = 1
+   end
+   add_level_select_menu_item()
+   return true
+  end
+ 
+  if b&32 > 0 then
+   init_new_world()
+   return false
+  end
+ end
+
 __gfx__
 00000000000000006688866633333333666677776666777733333333eeeeeeeeeeeeeee000000000000000000000000000000000000000000000000000000000
 00000000000000006887886666666666666666666666666766666666e5555555e00300e000004000000000000000000000000000000000000000000000000000
@@ -469,19 +574,19 @@ cccc5566666666667666766636667666666676660000000036667666355555550000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000bbbbbbbbbbbbbb6bbbbbbbbbbbbbbb6bb6336bb6bb6bb633bbb6bbbbbb6bbbbb
-0000000000000000000000000000000000000000000000000000000000000000bb1111bb8668bb6bbbb666bb6666bb6bb6336bb6bb6bb633b666bb666b66666b
-0000000000000000000000000000000000000000000000000000000000000000b111111b8668bb6bbbb656bb6556bb6b6666666666666666b636666366656b6b
-0000000000000000000000000000000000000000000000000000000000000000bb111bbbb88bbb6bbbb666666666bb6bb633655655655633b6355553656b6b6b
-0000000000000000000000000000000000000000000000000000000000000000bb1bbbbbb666bb6bbbb655555556bb6bb633655655655633b63555536565666b
-0000000000000000000000000000000000000000000000000000000000000000bb11bbbbb686bb6bbbc653111116bb6b66666666666666666666666666666566
-0000000000000000000000000000000000000000000000000000000000000000bbbbbbbbb666bb6b6666111111166666b6556336556336bbb63633633655656b
-0000000000000000000000000000000000000000000000000000000000000000bbbbbbbbbbbbbb6bbb86111111116bbbb65563365c6336bbb66666666653656b
-0000000000000000000000000000000000000000000000000000000000000000bbbbbbbbbbb8b86bbbb6111111116bbb6666666666666666b56b56555553666b
-00000000000000000000000000000000000000000000000000000000000000006666666666666666bbb6111111116bbb3655655633633633b56556b83c55636b
-0000000000000000000000000000000000000000000000000000000000000000bbbbbbbb8b55556bbb66331111556bbb36586556336336336663666636666666
-0000000000000000000000000000000000000000000000000000000000000000bbbbbbbbbbbbb56bb6666333115566666666666666666666b6356b655356bb63
-0000000000000000000000000000000000000000000000000000000000000000bbbb666bbb5bbb6bb655663311556bbbb6556336556556bbb6356b6333566663
-0000000000000000000000000000000000000000000000000000000000000000bbbb6c6bbbbbbb6bb655566666666bbbb6556336556556bbb6656b6555555653
-0000000000000000000000000000000000000000000000000000000000000000bbbb666bbb55bb6bb66666bbbbbb666b6666666666666666b3666b6666666653
-0000000000000000000000000000000000000000000000000000000000000000bbbbbbbbbbbbbb6bbbbbbbbbbbbbbb6bb6bb6bb6bb6bb633bbb6bb5555633333
+0000000000000000000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb6bb6336bb6bb6bb633bbb6bbbbbb6bbbbb
+0000000000000000000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbb666bb6666bb6bb6336bb6bb6bb633b666bb666b66666b
+0000000000000000000000000000000000000000000000000000000000000000bbbbb666b666bbbbbbb656bb6556bb6b6666666666666666b636666366656b6b
+0000000000000000000000000000000000000000000000000000000000000000bbbb66b666b66bbbbbb666666666bb6bb633655655655633b6355553656b6b6b
+0000000000000000000000000000000000000000000000000000000000000000bbbb6bbb6bbb6bbbbbb655555556bb6bb633655655655633b63555536565666b
+0000000000000000000000000000000000000000000000000000000000000000bbb666b666b666bbbbc653111116bb6b66666666666666666666666666666566
+0000000000000000000000000000000000000000000000000000000000000000bb66b666b666b6bb6666111111166666b6556336556336bbb63633633655656b
+0000000000000000000000000000000000000000000000000000000000000000bbb666b666b666bbbb86111111116bbbb65563365c6336bbb66666666653656b
+0000000000000000000000000000000000000000000000000000000000000000bbbb6bbb6bbb6bbbbbb6111111116bbb6666666666666666b56b56555553666b
+0000000000000000000000000000000000000000000000000000000000000000bbb666b666b666bbbbb6111111116bbb3655655633633633b56556b83c55636b
+0000000000000000000000000000000000000000000000000000000000000000bb66b666b666b66bbb66331111556bbb36586556336336336663666636666666
+0000000000000000000000000000000000000000000000000000000000000000bb6bbb6bbb6bbb6bb6666333115566666666666666666666b6356b655356bb63
+0000000000000000000000000000000000000000000000000000000000000000bb66b666b666b66bb655663311556bbbb6556336556556bbb6356b6333566663
+0000000000000000000000000000000000000000000000000000000000000000bbb666b666b666bbb655566666666bbbb6556336556556bbb6656b6555555653
+0000000000000000000000000000000000000000000000000000000000000000bbbb6bbbbbbb6bbbb66666bbbbbb666b6666666666666666b3666b6666666653
+0000000000000000000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb6bb6bb6bb6bb6bb633bbb6bb5555633333
