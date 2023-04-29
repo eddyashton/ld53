@@ -45,8 +45,8 @@ function try_move(tr)
   if paths[v.y] and paths[v.y][v.x] then
    tr.dir_idx = left_idx
   else
-	  -- turn right
-	  tr.dir_idx = (tr.dir_idx+1)%4
+   -- turn right
+   tr.dir_idx = (tr.dir_idx+1)%4
   end
  end
 end
@@ -67,35 +67,42 @@ function _update()
  end
  ]]--
  
+ if btnp(🅾️) then
+  target.blue = not target.blue
+ end
+ 
  if btn(❎) then
-  if (btn(⬆️)) preview_dir = ⬆️
-  if (btn(➡️)) preview_dir = ➡️
-  if (btn(⬇️)) preview_dir = ⬇️
-  if (btn(⬅️)) preview_dir = ⬅️
+  if (btn(⬆️)) target.dir = ⬆️
+  if (btn(➡️)) target.dir = ➡️
+  if (btn(⬇️)) target.dir = ⬇️
+  if (btn(⬅️)) target.dir = ⬅️
  else
-  if preview_dir != nil then
+  if target.dir != nil then
    -- x released, place a redirection here!
-   redirections[v_to_s(target)] = preview_dir
-   preview_dir = nil
+   redirections[v_to_s(target.pos)] = {
+    dir = target.dir,
+    blue = target.blue
+   }
+   target.dir = nil
   end
   
-	 local from_here = crossings_graph[v_to_s(target)]
- 	if (btnp(➡️)) target = from_here.➡️
-	 if (btnp(⬅️)) target = from_here.⬅️
-	 if (btnp(⬆️)) target = from_here.⬆️
-	 if (btnp(⬇️)) target = from_here.⬇️
-	end
+  local from_here = crossings_graph[v_to_s(target.pos)]
+  if (btnp(➡️)) target.pos = from_here.➡️
+  if (btnp(⬅️)) target.pos = from_here.⬅️
+  if (btnp(⬆️)) target.pos = from_here.⬆️
+  if (btnp(⬇️)) target.pos = from_here.⬇️
+ end
  
  if t() >= update_at then
   for tr in all(trucks) do
    try_move(tr)
-	  --tr.pos = v2_add(tr.pos, tr.dir)
-	  -- loop off screen edges
-	  if (tr.dir_idx == 0 and tr.pos.y < 0) tr.pos.y = 131
-	  if (tr.dir_idx == 1 and tr.pos.x > 128) tr.pos.x = -4
-	  if (tr.dir_idx == 2 and tr.pos.y > 131) tr.pos.y = 0
-	  if (tr.dir_idx == 3 and tr.pos.x < -1) tr.pos.x = 131
-	  update_at = t() + move_delay
+   --tr.pos = v2_add(tr.pos, tr.dir)
+   -- loop off screen edges
+   if (tr.dir_idx == 0 and tr.pos.y < 0) tr.pos.y = 131
+   if (tr.dir_idx == 1 and tr.pos.x > 128) tr.pos.x = -4
+   if (tr.dir_idx == 2 and tr.pos.y > 131) tr.pos.y = 0
+   if (tr.dir_idx == 3 and tr.pos.x < -1) tr.pos.x = 131
+   update_at = t() + move_delay
   end
  end
 end
@@ -157,7 +164,11 @@ function build_paths()
   end
  end
 
- target = crossings[next(crossings, nil)]
+ target = {
+  pos = crossings[next(crossings, nil)],
+  dir = nil,
+  blue = false,
+ }
 end
 
 function build_crossings_graph()
@@ -185,8 +196,8 @@ function build_crossings_graph()
   
   if #neighbours == 1 then
    return follow_road(
-   	adj,
-   	s_to_v(neighbours[1])
+    adj,
+    s_to_v(neighbours[1])
    )
   elseif #neighbours == 0 then
    return nil
@@ -253,24 +264,24 @@ function init_new_world()
 
  trucks = {}
  
-	-- randomly place some trucks on the paths
-	for i=1,8 do
-	 local y,row = rnd_el(paths)
-	 local x,_ = rnd_el(row)
-	 local dir_idx = flr(rnd(4))
-	 add(trucks,
-	  mk_truck
-	  (
-	   i%2==0,
-	   v2(x,y),
-				dir_idx,
-	   flr(i/2)==1
-	  )
-	 )
-	end
+ -- randomly place some trucks on the paths
+ for i=1,8 do
+  local y,row = rnd_el(paths)
+  local x,_ = rnd_el(row)
+  local dir_idx = flr(rnd(4))
+  add(trucks,
+   mk_truck
+   (
+    i%2==0,
+    v2(x,y),
+    dir_idx,
+    flr(i/2)==1
+   )
+  )
+ end
 
  redirections = {}
- preview_dir = nil
+ target.dir = nil
 end
 
 function _init()
@@ -364,8 +375,8 @@ function cell_to_world(v, cent)
 end
 
 function _draw()
-	cls()
-	pal()
+ cls()
+ pal()
  
  -- copy pre-rendered background map
  memcpy(
@@ -375,13 +386,14 @@ function _draw()
  )
  
  -- draw all redirection arrows
- for cs, d in pairs(redirections) do
+ for cs, r in pairs(redirections) do
   local c = s_to_v(cs)
   local v = cell_to_world(c)
-  local sx = (d == ⬆️ or d == ⬇️) and 16 or 23
-  local flip_x = d == ⬅️
-  local flip_y = d == ⬇️
+  local sx = (r.dir == ⬆️ or r.dir == ⬇️) and 16 or 23
+  local flip_x = r.dir == ⬅️
+  local flip_y = r.dir == ⬇️
   local w,h = 7,7
+  if (r.blue) swap_red_to_blue()
   sspr(
    sx,0,
    w,h,
@@ -389,34 +401,37 @@ function _draw()
    w,h,
    flip_x,flip_y
   )
+  pal()
  end
  
  -- draw all trucks
  for truck in all(trucks) do
   draw_truck(truck)
  end
+ pal()
  
  -- debug drawing
  if false then
-		-- debug draw paths
-		for y, row in pairs(paths) do
-		 for x, _ in pairs(row) do
-		  pset(x,y,10)
-		 end
-		end
-		
-		for c in all(crossings) do
+  -- debug draw paths
+  for y, row in pairs(paths) do
+   for x, _ in pairs(row) do
+    pset(x,y,10)
+   end
+  end
+  
+  for c in all(crossings) do
    local v = cell_to_world(c, true)
-		 circ(v.x,v.y, 3, 15)
-		end
-	end
-	
-	-- highlight selected crossing
-	-- flash
-	if t() % 1 < 0.6 then
-	 local targ = cell_to_world(target, true)
-	 circ(targ.x, targ.y, 4, 10)
-	end
+   circ(v.x,v.y, 3, 15)
+  end
+ end
+ 
+ -- highlight selected crossing
+ -- flash
+ if t() % 1 < 0.6 then
+  local targ = cell_to_world(target.pos, true)
+  local c = target.blue and 12 or 8
+  circ(targ.x, targ.y, 4, c)
+ end
  
  -- debug printing
  color(0)
