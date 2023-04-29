@@ -9,6 +9,14 @@ function v2_add(_v1,_v2)
  return v2(_v1.x+_v2.x, _v1.y+_v2.y)
 end
 
+function rnd_el(_t)
+ local ar = {}
+ for k, v in pairs(_t) do
+  add(ar, {k,v})
+ end
+ return unpack(rnd(ar))
+end
+
 function _update()
  -- manual control of first truck
  local tr = trucks[1]
@@ -45,29 +53,60 @@ function _init()
  down = v2(0, 1)
  left = v2(-1, 0)
  
+ local dirs = {
+  up,
+  right,
+  down,
+  left
+ }
+ 
  function mk_truck(b,p,d,f)
   return {
    blue = b,
    pos = p,
    dir = d,
-   full = f or false
+   full = f
   }
  end
-
- trucks = {
-  mk_truck(false, v2(66,75), right),
- }
  
  roads = {}
- for y=0,16 do
+ for y=0,15 do
   local row = {}
-  for x=0,16 do
+  for x=0,15 do
    if sget(x+112, y+48) == 6 then
     row[x] = true
    end
   end
   roads[y] = row
  end
+ 
+ trucks = {
+--  mk_truck(false, v2(66,75), right),
+ }
+ 
+ --[[
+	-- randomly place some trucks on the roads
+	for i=1,8 do
+	 local cy,row = rnd_el(roads)
+	 local cx,_ = rnd_el(row)
+	 local d = rnd(dirs)
+	 local x,y = cx*8,cy*8
+	 -- correct x, y based on dir
+	 if (d == down) x+=1
+	 if (d == up) x+=5 y+=5
+	 if (d == right) x+=4 y+=2
+	 if (d == left) x+=4 y+=5
+	 add(trucks,
+	  mk_truck
+	  (
+	   i%2==0,
+	   v2(x,y),
+				d,
+	   flr(i/2)==1
+	  )
+	 )
+	end
+	]]--
 end
 
 function sspr_args(pos,dir)
@@ -188,11 +227,8 @@ function _draw()
   draw_truck(truck)
  end
  
+ -- debug printing
  color(0)
- local tr = trucks[1]
- print(tr.dir.x..","..tr.dir.y)
- print(tr.full and "full" or "empty")
- print(tr.blue and "blue" or "red")
 end
 __gfx__
 00000000000000006688866633333333666677776666777733333333000000000000000000000000000000000000000000000000000000000000000000000000
@@ -203,7 +239,7 @@ __gfx__
 00700700000000006887886666666666666666666666666676666666000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000006688866666666666666666666666666676666666000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000006666666666666666666666666666666676666666000000000000000000000000000000000000000000000000000000000000000000000000
-88886668886878663666766633333333333333330000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+87786668586878663666766633333333333333330000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 87785868786555663666766636666666666666660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 87785568786888663666766636666666666666660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 88885568886555663666666636666666666666660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
