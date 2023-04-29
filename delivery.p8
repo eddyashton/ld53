@@ -16,11 +16,22 @@ function _update()
  if (btnp(⬇️)) tr.dir = down
  if (btnp(⬅️)) tr.dir = left
  if (btnp(❎)) tr.full = not tr.full
- if (btnp(🅾️)) tr.is_blue = not tr.is_blue
+ if (btnp(🅾️)) tr.blue = not tr.blue
+ 
+ if (btnp(⬆️) or btnp(➡️) or btnp(⬇️) or btnp(⬅️)) then
+  tr.pos = v2_add(tr.pos, tr.dir)
+ end
  
  if t() >= update_at then
-  tr.pos = v2_add(tr.pos, tr.dir)
-  update_at = t() + 0.5
+  for tr in all(trucks) do
+	  tr.pos = v2_add(tr.pos, tr.dir)
+	  -- loop off screen edges
+	  if (tr.dir == right and tr.pos.x > 128) tr.pos.x = -4
+	  if (tr.dir == left and tr.pos.x < -1) tr.pos.x = 131
+	  if (tr.dir == down and tr.pos.y > 131) tr.pos.y = 0
+	  if (tr.dir == up and tr.pos.y < 0) tr.pos.y = 131
+	  update_at = t() + 0.1
+  end
  end
 end
 
@@ -33,7 +44,7 @@ function _init()
  
  function mk_truck(b,p,d,f)
   return {
-   is_blue = b,
+   blue = b,
    pos = p,
    dir = d,
    full = f or false
@@ -41,7 +52,27 @@ function _init()
  end
 
  trucks = {
-  mk_truck(false, v2(64,64), right)
+  mk_truck(false, v2(110,110), right),
+   
+  mk_truck(false, v2(80,48), right),
+  mk_truck(true, v2(80,56), right),
+  mk_truck(false, v2(80,64), right, true),
+  mk_truck(true, v2(80,72), right, true),
+  
+  mk_truck(false, v2(72,72), down),
+  mk_truck(true, v2(64,72), down),
+  mk_truck(false, v2(56,72), down, true),
+  mk_truck(true, v2(48,72), down, true),
+  
+  mk_truck(false, v2(48,64), left),
+  mk_truck(true, v2(48,56), left),
+  mk_truck(false, v2(48,48), left, true),
+  mk_truck(true, v2(48,40), left, true),
+  
+  mk_truck(false, v2(56,40), up),
+  mk_truck(true, v2(64,40), up),
+  mk_truck(false, v2(72,40), up, true),
+  mk_truck(true, v2(80,40), up, true),
  }
  update_at = t() + 0.5
 end
@@ -80,7 +111,7 @@ function draw_truck(truck)
  local pos = truck.pos
  local dir = truck.dir
  local truck_colour = 8
- if truck.is_blue then
+ if truck.blue then
   -- swap red to blue
   pal(8, 12)
   truck_colour = 12
@@ -106,7 +137,7 @@ function _draw()
  local tr = trucks[1]
  print(tr.dir.x..","..tr.dir.y)
  print(tr.full and "full" or "empty")
- print(tr.is_blue and "blue" or "red")
+ print(tr.blue and "blue" or "red")
 end
 __gfx__
 00000000000000006688866666666666000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
