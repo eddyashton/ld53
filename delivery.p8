@@ -49,7 +49,7 @@ function _update()
  if (btnp(➡️)) tr.dir_idx = 1
  if (btnp(⬇️)) tr.dir_idx = 2
  if (btnp(⬅️)) tr.dir_idx = 3
- if (btnp(❎)) tr.full = not tr.full _dbg_draw = not _dbg_draw
+ if (btnp(❎)) tr.full = not tr.full
  if (btnp(🅾️)) tr.blue = not tr.blue
  
  if (btnp(⬆️) or btnp(➡️) or btnp(⬇️) or btnp(⬅️)) then
@@ -143,7 +143,6 @@ function _init()
   end
  end
  
- 
  function mk_truck(b,p,d,f)
   return {
    blue = b,
@@ -154,32 +153,24 @@ function _init()
  end
 
  trucks = {
-  mk_truck(false, v2(75,83), 1),
+  mk_truck(false, v2(73,80), 1),
  }
  
- --[[
-	-- randomly place some trucks on the roads
+	-- randomly place some trucks on the paths
 	for i=1,8 do
-	 local cy,row = rnd_el(roads)
-	 local cx,_ = rnd_el(row)
-	 local d = rnd(dirs)
-	 local x,y = cx*8,cy*8
-	 -- correct x, y based on dir
-	 if (d == down) x+=1
-	 if (d == up) x+=5 y+=5
-	 if (d == right) x+=4 y+=2
-	 if (d == left) x+=4 y+=5
+	 local y,row = rnd_el(paths)
+	 local x,_ = rnd_el(row)
+	 local dir_idx = flr(rnd(4))
 	 add(trucks,
 	  mk_truck
 	  (
 	   i%2==0,
 	   v2(x,y),
-				d,
+				dir_idx,
 	   flr(i/2)==1
 	  )
 	 )
 	end
-	]]--
 end
 
 function sspr_args(pos,dir)
