@@ -164,6 +164,16 @@ end
 function _update()
  if (game_over) return
 
+ while #events > 0 do
+  local trigger,action = unpack(events[1])
+  if trigger() then
+   action()
+   deli(events, 1)
+  else
+   break
+  end
+ end
+
  if btnp(🅾️) then
   target.blue = not target.blue
  end
@@ -306,7 +316,10 @@ _screen_size = 0x2000
 _data_start = 0x8000
 
 function init_new_world()
- local name,offs = unpack(_worlds[selected_world])
+ local name,offs,e = unpack(_worlds[selected_world])
+
+ events = e or {}
+ world_text = {}
 
  -- restart log file
  --printh("Loading world: "..name, _dbg_out, true)
@@ -611,16 +624,6 @@ function _draw()
   end
  end
  
- -- debug drawing
- if false then
-  -- debug draw paths
-  for y, row in pairs(paths) do
-   for x, _ in pairs(row) do
-    pset(x,y,10)
-   end
-  end
- end
- 
  -- draw lights in all of the windows with demand
  for dest in all(dests) do
   local v = cell_to_world(dest.pos)
@@ -655,6 +658,20 @@ function _draw()
  for _, s in ipairs(recent_scores) do
   local blue = s[2]
   print("\f"..to_hex(blue and 12 or 8).." +"..s[3].."!\0")
+ end
+ 
+ for _, wt in pairs(world_text) do
+  print(unpack(wt))
+ end
+
+ -- debug drawing
+ if false then
+  -- debug draw paths
+  for y, row in pairs(paths) do
+   for x, _ in pairs(row) do
+    pset(x,y,10)
+   end
+  end
  end
 
  -- debug printing
@@ -847,9 +864,32 @@ function draw_world()
  end
 
 -->8
+-- tutorial
+
+function mk_add_world_text(k, ...)
+ local args = {...}
+ return function() world_text[k] = args end
+end
+
+function mk_remove_world_text(k)
+ return function() world_text[k] = nil end
+end
+
+function mk_delay_trigger(n)
+ return function() return t() >= n end
+end
+
+tutorial_events = {
+  {mk_delay_trigger(2), mk_add_world_text("h", "hello", 5,5, 3)},
+  {mk_delay_trigger(3), mk_add_world_text("w", "world", 5,30, 4)},
+  {mk_delay_trigger(4), mk_remove_world_text("w")},
+}
+
+
+-->8
 -- level select
 _worlds = {
-  {"tutorial", v2(48, 48)},
+  {"tutorial", v2(48, 48), tutorial_events},
   --{"test", v2(64, 48)},
   {"lake", v2(80, 48)},
   {"town", v2(112, 48)},
@@ -857,34 +897,34 @@ _worlds = {
  }
 
 function add_level_select_menu_item()
-  local world_name = _worlds[selected_world][1]
-  menuitem(2, "lvl: ⬅️"..world_name.."➡️", level_select)
+ local world_name = _worlds[selected_world][1]
+ menuitem(2, "lvl: ⬅️"..world_name.."➡️", level_select)
+end
+
+function level_select(b)
+ if b&1 > 0 then
+  selected_world -= 1
+  if selected_world < 1 then
+   selected_world = #_worlds
+  end
+  add_level_select_menu_item()
+  return true
+ end
+
+ if b&2 > 0 then
+  selected_world += 1
+  if selected_world > #_worlds then
+   selected_world = 1
+  end
+  add_level_select_menu_item()
+  return true
  end
  
- function level_select(b)
-  if b&1 > 0 then
-   selected_world -= 1
-   if selected_world < 1 then
-    selected_world = #_worlds
-   end
-   add_level_select_menu_item()
-   return true
-  end
-  
-  if b&2 > 0 then
-   selected_world += 1
-   if selected_world > #_worlds then
-    selected_world = 1
-   end
-   add_level_select_menu_item()
-   return true
-  end
- 
-  if b&32 > 0 then
-   init_new_world()
-   return false
-  end
+ if b&32 > 0 then
+  init_new_world()
+  return false
  end
+end
 
 __gfx__
 00000000000000000088800008880003666677776666777733333333eeeeeeeeeeeeeee000040000bbbbbbbb0000000000000000000000000000000000000000
