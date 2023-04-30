@@ -95,6 +95,7 @@ function interact(tr, c)
    local moved = min(adj_depot.supply, tr.max_load - tr.load)
    tr.load += moved
    adj_depot.supply -= moved
+   if (tutorial_state) tutorial_state.collected = true
    return true
   end
  end
@@ -107,6 +108,7 @@ function interact(tr, c)
    for i in all(deliverable) do
     deli(dest.demand, i)
    end
+   if (tutorial_state) tutorial_state.delivered = true
    score += delivered
    add(recent_scores, {t(), tr.blue, delivered})
    return true
@@ -146,9 +148,8 @@ function try_move(tr)
 end
 
 function next_road(from, dir, escape)
- escape = escape or from
  local v = v2_add(from, dir)
- if (v.x == escape.x and v.y == escape.y) return nil
+ if (escape and v.x == escape.x and v.y == escape.y) return nil
 
  v.x %= 16
  v.y %= 16
@@ -164,12 +165,40 @@ function set_game_over()
  play_time = t()
 end
 
+function create_order(d)
+ d.next_order = get_next_order_time()
+ d.prev_order = t()
+ if d.supply < 9 then
+  d.supply += 1
+ 
+  -- find an empty house to make this order from
+  local candidates = {}
+  -- make a list of all candidates with space
+  for dest in all(dests) do
+   if #dest.demand < dest.max_demand then
+    add(candidates, dest)
+   end
+  end
+ 
+  if #candidates > 0 then
+   local dest = rnd(candidates)
+   add(dest.demand, d.blue)
+  end
+ else
+  d.damage += 1
+  if d.damage == 3 then
+   set_game_over()
+  end
+  d.damage_frames = 10
+ end
+end
+
 function _update()
  if (game_over) return
 
  while #events > 0 do
   local trigger,action = unpack(events[1])
-  if trigger() then
+  if trigger == nil or trigger() then
    action()
    deli(events, 1)
   else
@@ -179,6 +208,7 @@ function _update()
 
  if btnp(🅾️) then
   target.blue = not target.blue
+  if (tutorial_state) tutorial_state.toggled = true
  end
  
  if btn(❎) then
@@ -198,47 +228,31 @@ function _update()
       dir = target.dir,
       blue = target.blue
     }
+    if (tutorial_state) tutorial_state.placed = true
+    if (tutorial_state and target.blue) tutorial_state.placed_blue = true
     target.dir = nil
    else
     -- if there was a redirection here, delete it
     redirections[v_to_s(target.pos)] = nil
+    if (tutorial_state) tutorial_state.deleted = true
    end
   end
   
-  if (btnp(➡️)) target.pos = next_road(target.pos, right)
-  if (btnp(⬅️)) target.pos = next_road(target.pos, left)
-  if (btnp(⬆️)) target.pos = next_road(target.pos, up)
-  if (btnp(⬇️)) target.pos = next_road(target.pos, down)
+  function mark_tut_move(c)
+   if tutorial_state.moved_cursor then
+    tutorial_state.moved_cursor[c] = true
+   end
+  end
+  if (btnp(➡️)) target.pos = next_road(target.pos, right) mark_tut_move(➡️)
+  if (btnp(⬅️)) target.pos = next_road(target.pos, left) mark_tut_move(⬅️)
+  if (btnp(⬆️)) target.pos = next_road(target.pos, up) mark_tut_move(⬆️)
+  if (btnp(⬇️)) target.pos = next_road(target.pos, down) mark_tut_move(⬇️)
  end
  
  -- check if any depots get supplied
  for d in all(depots) do
-  if t() >= d.next_order then
-   d.next_order = get_next_order_time()
-   d.prev_order = t()
-   if d.supply < 9 then
-    d.supply += 1
-
-    -- find an empty house to make this order from
-    local candidates = {}
-    -- make a list of all candidates with space
-    for dest in all(dests) do
-     if #dest.demand < dest.max_demand then
-      add(candidates, dest)
-     end
-    end
-
-    if #candidates > 0 then
-     local dest = rnd(candidates)
-     add(dest.demand, d.blue)
-    end
-   else
-    d.damage += 1
-    if d.damage == 3 then
-     set_game_over()
-    end
-    d.damage_frames = 10
-   end
+  if d.next_order and t() >= d.next_order then
+   create_order(d)
   end
  end
  
@@ -308,8 +322,9 @@ function build_paths()
   end
  end
 
+ local pstart = v2(8,8)
  target = {
-  pos = next_road(v2(8,8), up) or first_road,
+  pos = next_road(pstart, up, pstart) or first_road,
   dir = nil,
   was_on = false,
   blue = false,
@@ -324,10 +339,18 @@ function init_new_world()
  local name,offs,e = unpack(_worlds[selected_world])
 
  events = e or {}
- world_text = {}
+ custom_draws = {}
 
  -- restart log file
  --printh("Loading world: "..name, _dbg_out, true)
+
+ if name == "tutorial" then
+  tutorial_state = {
+    pause_depots = true,
+  }
+ else
+  tutorial_state = nil
+ end
 
  world = load_world(offs.x,offs.y)
 
@@ -623,16 +646,18 @@ function _draw()
 
   -- draw a clock to indicate time until next order
   -- only appears for final 3rd of order time
-  local frac = (t() - depot.prev_order) / (depot.next_order - depot.prev_order)
-  frac = (frac*3) - 2
-  if frac > 0 then
-   frac += 0.05 -- offset slightly for nicer rendering
-   draw_clock_arm(
-    v2_add(cell_to_world(depot.pos, true), v2(0.5, 0.5)),
-    2,
-    frac,
-    0
-   )
+  if depot.next_order then
+   local frac = (t() - depot.prev_order) / (depot.next_order - depot.prev_order)
+   frac = (frac*3) - 2
+   if frac > 0 then
+    frac += 0.05 -- offset slightly for nicer rendering
+    draw_clock_arm(
+     v2_add(cell_to_world(depot.pos, true), v2(0.5, 0.5)),
+     2,
+     frac,
+     0
+    )
+   end
   end
  end
  
@@ -672,8 +697,8 @@ function _draw()
   print("\f"..to_hex(blue and 12 or 8).." +"..s[3].."!\0")
  end
  
- for _, wt in pairs(world_text) do
-  print(unpack(wt))
+ for _, drawfn in pairs(custom_draws) do
+  drawfn()
  end
 
  -- debug drawing
@@ -693,6 +718,7 @@ end
 -->8
 -- world map
 function get_next_order_time()
+ if (tutorial_state.pause_depots) return nil
  return t() + 2--5 + rnd(10)
 end
 
@@ -878,23 +904,115 @@ function draw_world()
 -->8
 -- tutorial
 
-function mk_add_world_text(k, ...)
+function mk_printc(k, ...)
  local args = {...}
- return function() world_text[k] = args end
+ return
+  function()
+   custom_draws[k] =
+    function()
+     printc(unpack(args))
+    end
+  end
 end
 
-function mk_remove_world_text(k)
- return function() world_text[k] = nil end
+function mk_remover(k)
+ return function() custom_draws[k] = nil end
 end
 
 function mk_delay_trigger(n)
  return function() return t() >= n end
 end
 
+function checkbox(check, s, x, y, c)
+ local done = check()
+ print("["..(done and "♥" or "  ").."] ", x-20,y,c)
+ print(s,x,y,c)
+end
+
 tutorial_events = {
-  {mk_delay_trigger(2), mk_add_world_text("h", "hello", 5,5, 3)},
-  {mk_delay_trigger(3), mk_add_world_text("w", "world", 5,30, 4)},
-  {mk_delay_trigger(4), mk_remove_world_text("w")},
+  -- 0th step - welcome message
+  {nil, mk_printc("tut", "welcome to your first day!", 64,64, 0)},
+
+  -- 1st step, move cursor
+  {
+   function()
+    tutorial_state.moved_cursor = {}
+    return t() > 0 --4 -- todo
+   end,
+   function()
+    custom_draws["tut"] = function()
+     print("move cursor:", 24, 70, 0)
+     local mc = tutorial_state.moved_cursor
+     checkbox(function() return mc and mc[⬅️] end, "⬅️", 26, 78,0)
+     checkbox(function() return mc and mc[➡️] end, "➡️", 26, 84,0)
+     checkbox(function() return mc and mc[⬆️] end, "⬆️", 26, 90,0)
+     checkbox(function() return mc and mc[⬇️] end, "⬇️", 26, 96,0)
+
+     if mc and mc[⬅️] and mc[➡️] and mc[⬆️] and mc[⬇️] then
+      tutorial_state.moved_cursor = nil
+     end
+    end
+   end
+  },
+
+  -- 2nd step, place and delete
+  {
+    function()
+     if tutorial_state.moved_cursor == nil then
+      tutorial_state.placed = false
+      tutorial_state.deleted = false
+      return true
+     end
+    end,
+    function()
+     custom_draws["tut"] = function()
+      printc("this red lorry will", 64, 56)
+      printc("follow red arrows", 64, 64)
+      checkbox(function() return tutorial_state.placed end, "hold ❎+(dir) to\nplace an arrow", 26,70, 0)
+      checkbox(function() return tutorial_state.deleted end, "tap ❎ to delete\nexisting arrow", 26,86, 0)
+     end
+    end
+  },
+
+  -- 3rd step, multiple colours
+  {
+    function()
+     if tutorial_state.placed and tutorial_state.deleted then
+      tutorial_state.toggled = false
+      tutorial_state.placed_blue = false
+      return true
+     end
+    end,
+    function()
+     custom_draws["tut"] = function()
+      printc("red lorries ignore", 64, 56)
+      printc("blue arrows", 64, 64)
+      checkbox(function() return tutorial_state.toggled end, "tap 🅾️ to change\ncursor colour", 26,70, 0)
+      checkbox(function() return tutorial_state.placed_blue end, "place a blue\narrow", 26,86, 0)
+     end
+    end
+  },
+
+  -- 4th step, collect and deliver
+  {
+    function()
+     if tutorial_state.toggled and tutorial_state.placed_blue then
+      tutorial_state.collected = false
+      tutorial_state.delivered = false
+      tutorial_state.pause_depots = false
+      create_order(depots[1])
+      return true
+     end
+    end,
+    function()
+     custom_draws["tut"] = function()
+      printc("orders will now arrive", 64, 56)
+      printc("at the depot", 64, 64)
+      checkbox(function() return tutorial_state.collected end, "collect an order by\npassing the depot", 24,80, 0)
+      checkbox(function() return tutorial_state.delivered end, "deliver an order to\na window of the same colour", 24,96, 0)
+     end
+    end
+  },
 }
 
 
@@ -988,18 +1106,18 @@ cccc5566666666667666766636667666666676660000000036667666355555550000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbb555999bbbbbbbbbbbbbbbbbbbbbbbb6b3633633633633633bbb6bbbbbb6bbbbb
-000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbb555999bbbbbbbbbbbbb666bb6666bb6b3633633633633633b666bb666b66666b
-000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbb555999bbbbbbbbbbbbb656bb6556bb6b6666666666666666b636666366656b6b
-000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbb666666bbbbbbbbbbbbb666666666bb6b3633699699699633b6355553656b6b6b
-000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbb656696bbbbbbbbbbbbb655555556bb6b3633655655655633b63555536565666b
-000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbb666666bcbbbbbbbbbbc653111116bb6b66666666666666666666666666666566
-000000000000000000000000000000000000000000000000bbbb8bbbbbbbbbbbbbbbbbb6bbbbbbbb66661111111666663655633655633633b63633633655656b
-000000000000000000000000000000000000000000000000bbb666bbbbbbbbbbbbbbbbb6bbbbbbbbbb86111111116bbb3655633655633633b66666666653656b
-000000000000000000000000000000000000000000000000bbb6b666bbbbbbbbbbbb8666665bbbbbbbb6111111116bbb6666666666666666b56b56555553666b
-000000000000000000000000000000000000000000000000bbb666b6bbbbbbbbbbbbbbb6bbbbbbbbbbb6111111116bbb3699699655655633b56356b83c55636b
-000000000000000000000000000000000000000000000000bbbbbbb6bbbbbbbbbbbbbbb6bbbbbbbbbb66331111556bbb36986c96596956336663666636666666
-000000000000000000000000000000000000000000000000bbbbbbb6bbbbbbbbbbbbbbb5bbbbbbbbb6666333115566666666666666666666b6356b653356bb63
-000000000000000000000000000000000000000000000000bbbbbbb5bbbbbbbbbbbbbbbbbbbbbbbbb655663311556bbb3655633659695633b6356b6533566663
+000000000000000000000000000000000000000000000000bbb336119bbbbbbb555999bbbbbbbbbbbbb666bb6666bb6b3633633633633633b666bb666b66666b
+000000000000000000000000000000000000000000000000bbb386116bbbbbbb555999bbbbbbbbbbbbb656bb6556bb6b6666666666666666b636666366656b6b
+000000000000000000000000000000000000000000000000bbb33666665bbbbb666666bbbbbbbbbbbbb666666666bb6b3633699699699633b6355553656b6b6b
+000000000000000000000000000000000000000000000000bbb336116bbbbbbb656696bbbbbbbbbbbbb655555556bb6b3633655655655633b63555536565666b
+000000000000000000000000000000000000000000000000bbb336115bbbbbbb666666bcbbbbbbbbbbc653111116bb6b66666666666666666666666666666566
+000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbb6bbbbbbbb66661111111666663655633655633633b63633633655656b
+000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbb6bbbbbbbbbb86111111116bbb3655633655633633b66666666653656b
+000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbb8666665bbbbbbbb6111111116bbb6666666666666666b56b56555553666b
+000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbb6bbbbbbbbbbb6111111116bbb3699699655655633b56356b83c55636b
+000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbb6bbbbbbbbbb66331111556bbb36986c96596956336663666636666666
+000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbb5bbbbbbbbb6666333115566666666666666666666b6356b653356bb63
+000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb655663311556bbb3655633659695633b6356b6533566663
 000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb655566666666bbb3655633655655633b6656b6555555653
 000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb66666bbbbbb666b6666666666666666b3666b6666666653
 000000000000000000000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb6b3633633633633633bbb6bb5555633333
