@@ -70,13 +70,17 @@ function interact(tr, c)
    tr.dir_idx = (tr.dir_idx + 1) % 4
    return true
   end
- elseif not tr.full then
+ end
+ if not tr.full then
   -- if you're adjacent to a depot, fill up!
   local adj_depot = adjacent_depot(c, tr.blue)
   if adj_depot != nil and adj_depot.supply > 0 then
    tr.full = true
    adj_depot.supply -= 1
   end
+ else
+  -- if you're adjacent to a building, drop off!
+  --local adj_bld = adjacent_building(c, tr.blue)
  end
  return false
 end
@@ -176,17 +180,17 @@ function _update()
   local candidates = {}
   -- make a list of all candidates with space
   for dest in all(dests) do
-   if dest.demand < dest.max_demand then
+   if #dest.demand < dest.max_demand then
     add(candidates, dest)
    end
   end
 
   if #candidates > 0 then
     local dest = rnd(candidates)
-    dest.demand += 1
+    add(dest.demand, rnd() > 0.5)
   end
 
-  next_demand_increase = t() + 0.1 -- todo: balance
+  next_demand_increase = t() + 1 -- todo: balance
  end
 end
 
@@ -467,20 +471,15 @@ function _draw()
     pset(x,y,10)
    end
   end
-
-  for dest in all(dests) do
-   local v = cell_to_world(dest.pos)
-   print(dest.demand, v.x, v.y)
-  end
  end
  
  -- draw lights in all of the windows with demand
  for dest in all(dests) do
   local v = cell_to_world(dest.pos)
   local windows = window_offsets[dest.kind]
-  for i=1,dest.demand do
+  for i,blue in pairs(dest.demand) do
    local wv = v2_add(v,windows[i])
-   pset(wv.x,wv.y,8)
+   pset(wv.x,wv.y,blue and 12 or 8)
   end
  end
  
@@ -551,7 +550,7 @@ function load_world(xoff, yoff)
      dests,
      {
       pos = v2(x,y),
-      demand = 0,
+      demand = {},
       max_demand = #window_offsets[v],
       kind = v,
      }
@@ -694,7 +693,7 @@ _worlds = {
 
 function add_level_select_menu_item()
   local world_name = _worlds[selected_world][1]
-  menuitem(2, "⬅️ "..world_name.." ➡️", level_select)
+  menuitem(2, "lvl: ⬅️ "..world_name.." ➡️", level_select)
  end
  
  function level_select(b)
