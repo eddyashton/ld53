@@ -58,10 +58,14 @@ end
 function adjacent_demand(c, blue)
  for d in all(dests) do
   if is_adj(c, d.pos) then
+   local deliverable = {}
    for i, b in pairs(d.demand) do
     if b == blue then
-     return d, i
+     add(deliverable, i)
     end
+   end
+   if #deliverable > 0 then
+    return d, deliverable
    end
   end
  end
@@ -84,22 +88,26 @@ function interact(tr, c)
    return true
   end
  end
- if not tr.full then
+ if tr.load < tr.max_load then
   -- if you're adjacent to a depot, fill up!
   local adj_depot = adjacent_depot(c, tr.blue)
   if adj_depot != nil and adj_depot.supply > 0 then
-   tr.full = true
-   adj_depot.supply -= 1
+   local moved = min(adj_depot.supply, tr.max_load - tr.load)
+   tr.load += moved
+   adj_depot.supply -= moved
    return true
   end
  else
   -- if you're adjacent to a building, drop off!
-  local dest, to_remove = adjacent_demand(c, tr.blue)
+  local dest, deliverable = adjacent_demand(c, tr.blue)
   if dest != nil then
-   tr.full = false
-   deli(dest.demand, to_remove)
-   score += 1
-   add(recent_scores, {t(), tr.blue})
+   local delivered = min(#deliverable, tr.load)
+   tr.load -= delivered
+   for i in all(deliverable) do
+    deli(dest.demand, i)
+   end
+   score += delivered
+   add(recent_scores, {t(), tr.blue, delivered})
    return true
   end
  end
@@ -304,15 +312,6 @@ function init_new_world()
  )
 
  build_paths()
- 
- function mk_truck(b,p,d,f)
-  return {
-   blue = b,
-   pos = p,
-   dir_idx = d,
-   full = f
-  }
- end
 
  trucks = {}
  
@@ -327,7 +326,8 @@ function init_new_world()
       blue = d.blue,
       pos = cell_to_world(v, true),
       dir_idx = 0,
-      full = false
+      load = 0,
+      max_load = 3,
      }
     )
     break
@@ -425,6 +425,7 @@ function draw_truck(truck)
    sspr_args(pos, dirs[truck.dir_idx])
   )
  )
+ print(truck.load, pos.x, pos.y, 0)
  pal()
 end
 
@@ -565,7 +566,7 @@ function _draw()
  for _, s in ipairs(recent_scores) do
   local blue = s[2]
   color(blue and 12 or 8)
-  print(" +1!\0")
+  print(" +"..s[3].."!\0")
  end
 
  -- debug printing
@@ -575,7 +576,7 @@ end
 -->8
 -- world map
 function get_next_order_time()
- return t() + 6 --5 + rnd(10)
+ return t() + 0.6 --5 + rnd(10)
 end
 
 
