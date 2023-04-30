@@ -340,6 +340,7 @@ function init_new_world()
 
  events = e or {}
  custom_draws = {}
+ game_over = false
 
  -- restart log file
  --printh("Loading world: "..name, _dbg_out, true)
