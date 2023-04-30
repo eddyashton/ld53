@@ -460,7 +460,7 @@ function _draw()
  end
  
  -- debug drawing
- if true then
+ if false then
   -- debug draw paths
   for y, row in pairs(paths) do
    for x, _ in pairs(row) do
@@ -469,7 +469,21 @@ function _draw()
   end
 
   for dest in all(dests) do
-   print(dest.pos.x..","..dest.pos.y..":"..dest.kind..","..dest.demand)
+   local v = cell_to_world(dest.pos)
+   print(dest.demand, v.x, v.y)
+  end
+ end
+ 
+ -- draw lights in all of the windows with demand
+ for dest in all(dests) do
+  local v = cell_to_world(dest.pos)
+  local window_offsets = {
+    [house] = {v2(5, 5)}
+  }
+  local windows = window_offsets[dest.kind]
+  for i=1,dest.demand do
+   local wv = v2_add(v,windows[i])
+   pset(wv.x,wv.y,8)
   end
  end
  
