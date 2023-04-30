@@ -30,6 +30,10 @@ function rnd_range(_a,_b)
  return _a+rnd(_b-_a)
 end
 
+function tcopy(_t)
+ return {unpack(_t)}
+end
+
 function adjacent_with_wrap(c,w)
  w = w or 16
  return (c-1)%w,(c+1)%16
@@ -167,6 +171,23 @@ function _update()
    end
   end
  end
+
+ if t() >= next_demand_increase then
+  local candidates = {}
+  -- make a list of all candidates with space
+  for dest in all(dests) do
+   if dest.demand < dest.max_demand then
+    add(candidates, dest)
+   end
+  end
+
+  if #candidates > 0 then
+    local dest = rnd(candidates)
+    dest.demand += 1
+  end
+
+  next_demand_increase = t() + 1 -- todo: balance
+ end
 end
 
 function build_paths()
@@ -280,6 +301,8 @@ function init_new_world()
 
  redirections = {}
  target.dir = nil
+
+ next_demand_increase = t() + 1
 end
 
 function _init()
@@ -437,12 +460,16 @@ function _draw()
  end
  
  -- debug drawing
- if false then
+ if true then
   -- debug draw paths
   for y, row in pairs(paths) do
    for x, _ in pairs(row) do
     pset(x,y,10)
    end
+  end
+
+  for dest in all(dests) do
+   print(dest.pos.x..","..dest.pos.y..":"..dest.kind..","..dest.demand)
   end
  end
  
@@ -478,12 +505,14 @@ function load_world(xoff, yoff)
  srand(bxor(xoff, yoff))
  water = 1
  park = 3
- building = 5
+ house = 5
  road = 6
  red_depot = 8
  blue_depot = 12
+
  world = {}
  depots = {}
+ dests = {}
  for y=0,15 do
   local world_row = {}
   for x=0,15 do
@@ -497,6 +526,16 @@ function load_world(xoff, yoff)
       blue = v == blue_depot,
       next_supply = get_next_supply_time(),
       supply = 1,
+     }
+    )
+   elseif v == house then
+    add(
+     dests,
+     {
+      pos = v2(x,y),
+      demand = 0,
+      max_demand = 1,
+      kind = house,
      }
     )
    end
@@ -553,7 +592,7 @@ function draw_world()
   -- draw parks, buildings, and roads
   for_each_cell(
    function(x,y,cell,cx,cy,row)
-    if cell == building then
+    if cell == house then
      spr(9, x, y, 1,1,(x + y*3)%2 == 1)
     elseif cell == park then
      -- draw from back to front, some random plants
@@ -570,9 +609,9 @@ function draw_world()
         {65,8,4,2}, -- bush
         {65,11,3,2}, -- grass
        }
-       -- if there's a building behind, don't draws trees here
+       -- if there's a house behind, don't draws trees here
        -- (in case they obscure windows!)
-       if (world[cy-1] and world[cy-1][cx] == building) deli(plants,1)
+       if (world[cy-1] and world[cy-1][cx] == house) deli(plants,1)
        local sx,sy,w,h = unpack(rnd(plants))
        sspr(sx,sy,w,h,x+xoff-ceil(w/2),y+yoff-h+1)
       end
