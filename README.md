@@ -1,5 +1,7 @@
 # Poppycock's Perfect Packages
 
+Made in 48 hours for Ludum Dare 53 (theme `Delivery`), in Pico-8.
+
 ## Story
 
 You have just been hired by a global megacorporation.
@@ -21,3 +23,8 @@ Trucks will only follow arrows of their own colour.
 Drive past a depot or house to collect and deliver orders.
 Windows light up in the colour of the good each customer has ordered.
 Multiple orders can be collected delivered at once.
+
+## Notes
+- No audio! Maybe next time
+- There are multiple levels availble from the pause menu
+- Difficulty is a bit whack, as the levels are mostly aesthetic rather than designed. Very easy to add more though, maybe I'll do that after the jam
