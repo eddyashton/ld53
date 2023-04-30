@@ -27,4 +27,4 @@ Multiple orders can be collected delivered at once.
 ## Notes
 - No audio! Maybe next time
 - There are multiple levels availble from the pause menu
-- Difficulty is a bit whack, as the levels are mostly aesthetic rather than designed. Very easy to add more though, maybe I'll do that after the jam
+- Difficulty is a bit whack, as the levels are mostly aesthetic rather than fun. Very easy to add more though, maybe I'll do that after the jam
