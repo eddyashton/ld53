@@ -183,12 +183,26 @@ function _update()
  
  -- check if any depots get supplied
  for d in all(depots) do
-  if t() >= d.next_supply then
-   d.next_supply = get_next_supply_time()
+  if t() >= d.next_order then
+   d.next_order = get_next_order_time()
    if d.supply < 9 then
     d.supply += 1
+
+    -- find an empty house to make this order from
+    local candidates = {}
+    -- make a list of all candidates with space
+    for dest in all(dests) do
+     if #dest.demand < dest.max_demand then
+      add(candidates, dest)
+     end
+    end
+
+    if #candidates > 0 then
+     local dest = rnd(candidates)
+      add(dest.demand, d.blue)
+     end
+    end
    end
-  end
  end
  
  if t() >= update_at then
@@ -205,23 +219,6 @@ function _update()
     update_at = t() + move_delay
    end
   end
- end
-
- if t() >= next_demand_increase then
-  local candidates = {}
-  -- make a list of all candidates with space
-  for dest in all(dests) do
-   if #dest.demand < dest.max_demand then
-    add(candidates, dest)
-   end
-  end
-
-  if #candidates > 0 then
-    local dest = rnd(candidates)
-    add(dest.demand, rnd() > 0.5)
-  end
-
-  next_demand_increase = t() + 0.1 -- todo: balance
  end
 end
 
@@ -340,7 +337,6 @@ function init_new_world()
  redirections = {}
  target.dir = nil
 
- next_demand_increase = t() + 1
  score = 0
  recent_scores = {}
 end
@@ -553,8 +549,8 @@ end
 
 -->8
 -- world map
-function get_next_supply_time()
- return t() + 5 + rnd(10)
+function get_next_order_time()
+ return t() + 0.5 --5 + rnd(10)
 end
 
 
@@ -594,7 +590,7 @@ function load_world(xoff, yoff)
      {
       pos = v2(x,y),
       blue = v == blue_depot,
-      next_supply = get_next_supply_time(),
+      next_order = get_next_order_time(),
       supply = 0,
      }
     )
