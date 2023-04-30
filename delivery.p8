@@ -40,11 +40,19 @@ function interact(tr, c)
  local redir = redirections[cs]
  if redir != nil and redir.blue == tr.blue then
   -- got redirected! manually map dirs
-  if (redir.dir == ⬆️) tr.dir_idx=0
-  if (redir.dir == ➡️) tr.dir_idx=1
-  if (redir.dir == ⬇️) tr.dir_idx=2
-  if (redir.dir == ⬅️) tr.dir_idx=3
+  local dir_mapping = {[⬆️]=0, [➡️]=1, [⬇️]=2, [⬅️]=3}
+  local redir_idx = dir_mapping[redir.dir]
+  -- turn towards the dir, but do a right u-turn to turn around
+  -- todo: find a nicer behaviour when redirecting into a wall?
+  if redir_idx == (tr.dir_idx-1) % 4 then
+   tr.dir_idx = redir_idx
+   return true
+  elseif redir_idx != tr.dir_idx then
+   tr.dir_idx = (tr.dir_idx + 1) % 4
+   return true
+  end
  end
+ return false
 end
 
 function try_move(tr)
