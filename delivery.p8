@@ -568,7 +568,7 @@ function _draw()
  
  for depot in all(depots) do
  -- draw all depot supplies
- if depot.blue then
+  if depot.blue then
    swap_red_to_blue()
   end
   local dp = cell_to_world(depot.pos)
@@ -582,8 +582,9 @@ function _draw()
     bl.y-flr((n-1)/3),
     8
    )
-   pal()
   end
+
+  pal()
 
   -- draw depot damage
   if (depot.damage >= 1) pset(dp.x,dp.y+5, 0)
