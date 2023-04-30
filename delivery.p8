@@ -845,16 +845,16 @@ function draw_world()
 -->8
 -- level select
 _worlds = {
-  {"tut", v2(48, 48)},
-  {"test", v2(64, 48)},
-  {"town", v2(112, 48)},
+  {"tutorial", v2(48, 48)},
+  --{"test", v2(64, 48)},
   {"lake", v2(80, 48)},
-  {"grid", v2(96,48)},
+  {"town", v2(112, 48)},
+  {"city", v2(96,48)},
  }
 
 function add_level_select_menu_item()
   local world_name = _worlds[selected_world][1]
-  menuitem(2, "lvl: ⬅️ "..world_name.." ➡️", level_select)
+  menuitem(2, "lvl: ⬅️"..world_name.."➡️", level_select)
  end
  
  function level_select(b)
