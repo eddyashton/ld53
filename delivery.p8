@@ -35,6 +35,18 @@ function adjacent_with_wrap(c,w)
  return (c-1)%w,(c+1)%16
 end
 
+function interact(tr, c)
+ local cs = v_to_s(c)
+ local redir = redirections[cs]
+ if redir != nil and redir.blue == tr.blue then
+  -- got redirected! manually map dirs
+  if (redir.dir == ⬆️) tr.dir_idx=0
+  if (redir.dir == ➡️) tr.dir_idx=1
+  if (redir.dir == ⬇️) tr.dir_idx=2
+  if (redir.dir == ⬅️) tr.dir_idx=3
+ end
+end
+
 function try_move(tr)
  local v = v2_add(tr.pos, dirs[tr.dir_idx])
  v.x = v.x%128
@@ -53,18 +65,6 @@ function try_move(tr)
    tr.dir_idx = (tr.dir_idx+1)%4
   end
  end
- 
- -- todo: remove this weird -3 offset
- -- todo: do u-turns around reverse arrows
- local cs = v_to_s(world_to_cell(v2_add(tr.pos, v2(-3,-3))))
- local redir = redirections[cs]
- if redir != nil and redir.blue == tr.blue then
-  -- got redirected! manually map dirs
-  if (redir.dir == ⬆️) tr.dir_idx=0
-  if (redir.dir == ➡️) tr.dir_idx=1
-  if (redir.dir == ⬇️) tr.dir_idx=2
-  if (redir.dir == ⬅️) tr.dir_idx=3
- end
 end
 
 function next_road(from, dir)
@@ -77,39 +77,33 @@ function next_road(from, dir)
  return next_road(v, dir)
 end
 
-function _update()
- --[[
- -- manual control of first truck
- local tr = trucks[1]
- if (btnp(⬆️)) tr.dir_idx = 0
- if (btnp(➡️)) tr.dir_idx = 1
- if (btnp(⬇️)) tr.dir_idx = 2
- if (btnp(⬅️)) tr.dir_idx = 3
- if (btnp(❎)) tr.full = not tr.full
- if (btnp(🅾️)) tr.blue = not tr.blue
- 
- if (btnp(⬆️) or btnp(➡️) or btnp(⬇️) or btnp(⬅️)) then
-  try_move(tr)
- end
- ]]--
- 
+function _update() 
  if btnp(🅾️) then
   target.blue = not target.blue
  end
  
  if btn(❎) then
-  if (btn(⬆️)) target.dir = ⬆️
-  if (btn(➡️)) target.dir = ➡️
-  if (btn(⬇️)) target.dir = ⬇️
-  if (btn(⬅️)) target.dir = ⬅️
+  target.was_on = true
+  if (btn(⬆️)) then target.dir = ⬆️
+  elseif (btn(➡️)) then target.dir = ➡️
+  elseif (btn(⬇️)) then target.dir = ⬇️
+  elseif (btn(⬅️)) then target.dir = ⬅️
+  end
  else
-  if target.dir != nil then
-   -- x released, place a redirection here!
-   redirections[v_to_s(target.pos)] = {
-    dir = target.dir,
-    blue = target.blue
-   }
-   target.dir = nil
+  if target.was_on then
+   target.was_on = false
+   -- x released
+   if target.dir != nil then
+    -- x released, place a redirection here!
+    redirections[v_to_s(target.pos)] = {
+      dir = target.dir,
+      blue = target.blue
+    }
+    target.dir = nil
+   else
+    -- if there was a redirection here, delete it
+    redirections[v_to_s(target.pos)] = nil
+   end
   end
   
   if (btnp(➡️)) target.pos = next_road(target.pos, right)
@@ -130,14 +124,17 @@ function _update()
  
  if t() >= update_at then
   for tr in all(trucks) do
-   try_move(tr)
-   --tr.pos = v2_add(tr.pos, tr.dir)
-   -- loop off screen edges
-   if (tr.dir_idx == 0 and tr.pos.y < 0) tr.pos.y = 131
-   if (tr.dir_idx == 1 and tr.pos.x > 128) tr.pos.x = -4
-   if (tr.dir_idx == 2 and tr.pos.y > 131) tr.pos.y = 0
-   if (tr.dir_idx == 3 and tr.pos.x < -1) tr.pos.x = 131
-   update_at = t() + move_delay
+   local c = world_to_cell(v2_add(tr.pos, v2(-3,-3)))
+   if not interact(tr, c) then
+    try_move(tr)
+ 
+    -- loop off screen edges
+    if (tr.dir_idx == 0 and tr.pos.y < 0) tr.pos.y = 131
+    if (tr.dir_idx == 1 and tr.pos.x > 128) tr.pos.x = -4
+    if (tr.dir_idx == 2 and tr.pos.y > 131) tr.pos.y = 0
+    if (tr.dir_idx == 3 and tr.pos.x < -1) tr.pos.x = 131
+    update_at = t() + move_delay
+   end
   end
  end
 end
@@ -192,6 +189,7 @@ function build_paths()
  target = {
   pos = next_road(v2(8,8), up),
   dir = nil,
+  was_on = false,
   blue = false,
  }
 end
