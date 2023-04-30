@@ -185,6 +185,7 @@ function _update()
  for d in all(depots) do
   if t() >= d.next_order then
    d.next_order = get_next_order_time()
+   d.prev_order = t()
    if d.supply < 9 then
     d.supply += 1
 
@@ -453,10 +454,20 @@ function draw_arrow(c, dir, blue)
   pal()
 end
 
+function draw_clock_arm(centre, rad, frac, colour)
+ frac += 0.5 -- offset to start from top
+ local vend = v2_add(centre, v2(rad*sin(frac), rad*cos(frac)))
+ line(
+  centre.x, centre.y,
+  vend.x, vend.y,
+  colour
+ )
+end
+
 function _draw()
  cls()
  pal()
- 
+
  -- copy pre-rendered background map
  memcpy(
   _screen_start,
@@ -493,6 +504,20 @@ function _draw()
    )
   end
   pal()
+
+  -- draw a clock to indicate time until next order
+  -- only appears for final 3rd of order time
+  local frac = (t() - depot.prev_order) / (depot.next_order - depot.prev_order)
+  frac = (frac*3) - 2
+  if frac > 0 then
+   frac += 0.05 -- offset slightly for nicer rendering
+   draw_clock_arm(
+    v2_add(cell_to_world(depot.pos, true), v2(0.5, 0.5)),
+    2,
+    frac,
+    0
+   )
+  end
  end
  
  -- debug drawing
@@ -550,7 +575,7 @@ end
 -->8
 -- world map
 function get_next_order_time()
- return t() + 0.5 --5 + rnd(10)
+ return t() + 6 --5 + rnd(10)
 end
 
 
@@ -591,6 +616,7 @@ function load_world(xoff, yoff)
       pos = v2(x,y),
       blue = v == blue_depot,
       next_order = get_next_order_time(),
+      prev_order = t(),
       supply = 0,
      }
     )
