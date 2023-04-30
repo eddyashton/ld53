@@ -63,6 +63,16 @@ function try_move(tr)
  end
 end
 
+function next_road(from, dir)
+ local v = v2_add(from, dir)
+ v.x %= 16
+ v.y %= 16
+ if world[v.y][v.x] == road then
+  return v
+ end
+ return next_road(v, dir)
+end
+
 function _update()
  --[[
  -- manual control of first truck
@@ -98,11 +108,10 @@ function _update()
    target.dir = nil
   end
   
-  local from_here = crossings_graph[v_to_s(target.pos)]
-  if (btnp(➡️)) target.pos = from_here.➡️
-  if (btnp(⬅️)) target.pos = from_here.⬅️
-  if (btnp(⬆️)) target.pos = from_here.⬆️
-  if (btnp(⬇️)) target.pos = from_here.⬇️
+  if (btnp(➡️)) target.pos = next_road(target.pos, right)
+  if (btnp(⬅️)) target.pos = next_road(target.pos, left)
+  if (btnp(⬆️)) target.pos = next_road(target.pos, up)
+  if (btnp(⬇️)) target.pos = next_road(target.pos, down)
  end
  
  -- check if any depots get supplied
@@ -481,9 +490,6 @@ function _draw()
  
  -- debug printing
  color(0)
- local d = depots[1]
- print(d.supply)
- print(d.next_supply - t())
 end
 
 -->8
