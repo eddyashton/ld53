@@ -139,7 +139,6 @@ function _update()
 end
 
 function build_paths()
- crossings = {}
  paths = {}
  function add_path(px,py)
   if (not paths[py]) paths[py] = {}
@@ -152,14 +151,12 @@ function build_paths()
     local x,y = 8*cx,8*cy
     local cl,cr = adjacent_with_wrap(cx)
     local cu,cd = adjacent_with_wrap(cy)
-    local neighbours = 0
     if row[cl] == road then
       local py = y+3
       add_path(x,py)
       add_path(x+1,py)
       add_path(x+2,py)
       add_path(x+3,py)
-      neighbours += 1
     end
     if world[cu][cx] == road then
       local px = x+3
@@ -167,7 +164,6 @@ function build_paths()
       add_path(px,y+1)
       add_path(px,y+2)
       add_path(px,y+3)
-      neighbours += 1
     end
     if row[cr] == road then
       local py = y+3
@@ -176,7 +172,6 @@ function build_paths()
       add_path(x+5,py)
       add_path(x+6,py)
       add_path(x+7,py)
-      neighbours += 1
     end
     if world[cd][cx] == road then
       local px = x+3
@@ -185,79 +180,16 @@ function build_paths()
       add_path(px,y+5)
       add_path(px,y+6)
       add_path(px,y+7)
-      neighbours += 1
-    end
-
-    if neighbours > 2 then
-     add(crossings, v2(cx, cy))
     end
    end
   end
  end
 
  target = {
-  pos = crossings[next(crossings, nil)],
+  pos = next_road(v2(8,8), up),
   dir = nil,
   blue = false,
  }
-end
-
-function build_crossings_graph()
- crossings_graph = {}
- 
- function follow_road(from, adj)
-  local cx,cy = adj.x, adj.y
-  local cl,cr = adjacent_with_wrap(cx)
-  local cu,cd = adjacent_with_wrap(cy)
-  local row = world[cy]
-  local neighbours = {}
-  if row[cl] == road then
-   add(neighbours, v_to_s(v2(cl, cy)))
-  end
-  if world[cu][cx] == road then
-   add(neighbours, v_to_s(v2(cx, cu)))
-  end
-  if row[cr] == road then
-   add(neighbours, v_to_s(v2(cr, cy)))
-  end
-  if world[cd][cx] == road then
-   add(neighbours, v_to_s(v2(cx, cd)))
-  end
-  del(neighbours, v_to_s(from))
-  
-  if #neighbours == 1 then
-   return follow_road(
-    adj,
-    s_to_v(neighbours[1])
-   )
-  elseif #neighbours == 0 then
-   return nil
-  else
-   return adj
-  end
- end
- 
- -- todo: should also try straight
- -- line raytrace
- function find_next(from, dir)
-  local adj = v2_add(from, dir)
-  if world[adj.y][adj.x] == road then
-   local cross = follow_road(from, adj)
-   if cross != nil then
-    return cross
-   end
-  end
-  return from
- end
-
- for i, crossing in ipairs(crossings) do
-  crossings_graph[v_to_s(crossing)] = {
-   ➡️ = find_next(crossing, right),
-   ⬅️ = find_next(crossing, left),
-   ⬆️ = find_next(crossing, up),
-   ⬇️ = find_next(crossing, down),
-  }
- end
 end
 
 _screen_start = 0x6000
@@ -282,7 +214,6 @@ function init_new_world()
  )
 
  build_paths()
- build_crossings_graph()
  
  function mk_truck(b,p,d,f)
   return {
@@ -473,14 +404,9 @@ function _draw()
     pset(x,y,10)
    end
   end
-  
-  for c in all(crossings) do
-   local v = cell_to_world(c, true)
-   circ(v.x,v.y, 3, 15)
-  end
  end
  
- -- highlight selected crossing
+ -- highlight selected cell
  -- flash
  if t() % 1 < 0.6 then
   local targ = cell_to_world(target.pos, true)
