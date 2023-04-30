@@ -318,20 +318,23 @@ function init_new_world()
 
  trucks = {}
  
- -- randomly place some trucks on the paths
- for i=1,2 do
-  local y,row = rnd_el(paths)
-  local x,_ = rnd_el(row)
-  local dir_idx = flr(rnd(4))
-  add(trucks,
-   mk_truck
-   (
-    i%2==0,
-    v2(x,y),
-    dir_idx,
-    false -- never start full
-   )
-  )
+ -- place a truck next to each depot
+ for d in all(depots) do
+  for dir_idx, dir in pairs(dirs) do
+   local v = v2_add(d.pos, dir)
+   if world[v.y] and world[v.y][v.x] == road then
+    add(
+     trucks,
+     {
+      blue = d.blue,
+      pos = cell_to_world(v, true),
+      dir_idx = 0,
+      full = false
+     }
+    )
+    break
+   end
+  end
  end
 
  redirections = {}
