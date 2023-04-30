@@ -327,7 +327,7 @@ function init_new_world()
       pos = cell_to_world(v, true),
       dir_idx = 0,
       load = 0,
-      max_load = 3,
+      max_load = 6,
      }
     )
     break
@@ -343,7 +343,7 @@ function init_new_world()
 end
 
 function _init()
- move_delay = 0.1
+ move_delay = 0
  update_at = t() + move_delay
 
  up = v2(0, -1)
@@ -407,6 +407,26 @@ function swap_red_to_blue()
  return 12
 end
 
+truck_load_offsets = {
+  -- when driving up, there's 2 pixels to fill
+  [0] = {[3] = v2(-2, 0), [6] = v2(-2,-1)},
+  -- when driving down, there's 1 pixel to fill
+  [2] = {[6] = v2(2, -4)},
+
+  -- when driving left and right, there's 6 pixels
+  -- fill in a consistent order, row-by-row
+  [1] = {
+   v2(-1,-3),v2(-2,-3),
+   v2(-1,-4),v2(-2,-4),
+   v2(-1,-5),v2(-2,-5),
+  },
+  [3] = {
+   v2( 1, 1),v2( 2, 1),
+   v2( 1, 0),v2( 2, 0),
+   v2( 1,-1),v2( 2,-1),
+  },
+}
+
 function draw_truck(truck)
  pal()
  palt(0, false)
@@ -417,15 +437,23 @@ function draw_truck(truck)
   -- swap red to blue
   truck_colour = swap_red_to_blue()
  end
- if truck.full then
-  pal(7, truck_colour)
- end
  sspr(
   unpack(
    sspr_args(pos, dirs[truck.dir_idx])
   )
  )
- print(truck.load, pos.x, pos.y, 0)
+
+ local offs = truck_load_offsets[truck.dir_idx]
+ for n=1,truck.load do
+  local off = offs[n]
+  if off != nil then
+   pset(
+    pos.x + off.x,
+    pos.y + off.y,
+    8
+   )
+  end
+ end
  pal()
 end
 
@@ -496,7 +524,6 @@ function _draw()
    cell_to_world(depot.pos),
    v2(2,4)
   )
-  local yoff=0
   for n=1,depot.supply do
    pset(
     bl.x+(n-1)%3,
@@ -576,7 +603,7 @@ end
 -->8
 -- world map
 function get_next_order_time()
- return t() + 0.6 --5 + rnd(10)
+ return t() + 2 --5 + rnd(10)
 end
 
 
