@@ -90,6 +90,7 @@ function interact(tr, c)
   if adj_depot != nil and adj_depot.supply > 0 then
    tr.full = true
    adj_depot.supply -= 1
+   return true
   end
  else
   -- if you're adjacent to a building, drop off!
@@ -97,6 +98,19 @@ function interact(tr, c)
   if dest != nil then
    tr.full = false
    deli(dest.demand, to_remove)
+   score += 1
+   add(recent_scores, {t(), tr.blue})
+   return true
+  end
+ end
+
+ -- expire old things from recent scores
+ while #recent_scores > 0 do
+  local at = unpack(recent_scores[1])
+  if t() - at > 2 then
+   deli(recent_scores, 1)
+  else
+   break
   end
  end
  return false
@@ -149,7 +163,7 @@ function _update()
    target.was_on = false
    -- x released
    if target.dir != nil then
-    -- x released, place a redirection here!
+    -- place a redirection here!
     redirections[v_to_s(target.pos)] = {
       dir = target.dir,
       blue = target.blue
@@ -519,6 +533,15 @@ function _draw()
   pal()
  end
  
+ -- print score!
+ color(9)
+ print(score.."\0")
+ for _, s in ipairs(recent_scores) do
+  local blue = s[2]
+  color(blue and 12 or 8)
+  print(" +1!\0")
+ end
+
  -- debug printing
  color(0)
 end
