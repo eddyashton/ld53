@@ -35,6 +35,21 @@ function adjacent_with_wrap(c,w)
  return (c-1)%w,(c+1)%16
 end
 
+_dbg_out = "dbg.out"
+
+function adjacent_depot(c, blue)
+ for d in all(depots) do
+  if d.blue == blue then
+   if
+    (c.y == d.pos.y and (c.x == d.pos.x-1 or c.x == d.pos.x+1)) or
+    (c.x == d.pos.x and (c.y == d.pos.y-1 or c.y == d.pos.y+1))
+    then
+     return d
+   end
+  end
+ end
+end
+
 function interact(tr, c)
  local cs = v_to_s(c)
  local redir = redirections[cs]
@@ -50,6 +65,13 @@ function interact(tr, c)
   elseif redir_idx != tr.dir_idx then
    tr.dir_idx = (tr.dir_idx + 1) % 4
    return true
+  end
+ elseif not tr.full then
+  -- if you're adjacent to a depot, fill up!
+  local adj_depot = adjacent_depot(c, tr.blue)
+  if adj_depot != nil and adj_depot.supply > 0 then
+   tr.full = true
+   adj_depot.supply -= 1
   end
  end
  return false
@@ -207,7 +229,11 @@ _screen_size = 0x2000
 _data_start = 0x8000
 
 function init_new_world()
- local offs = _worlds[selected_world][2]
+ local name,offs = unpack(_worlds[selected_world])
+
+ -- restart log file
+ --printh("Loading world: "..name, _dbg_out, true)
+
  world = load_world(offs.x,offs.y)
  
  -- draw the background map
@@ -247,7 +273,7 @@ function init_new_world()
     i%2==0,
     v2(x,y),
     dir_idx,
-    flr(i/2)==1
+    false -- never start full
    )
   )
  end
