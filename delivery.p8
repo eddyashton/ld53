@@ -605,9 +605,9 @@ function _draw()
   pal()
 
   -- draw depot damage
-  if (depot.damage < 3) pset(dp.x,dp.y+5, 7)
-  if (depot.damage < 2) pset(dp.x,dp.y+3, 7)
-  if (depot.damage < 1) pset(dp.x,dp.y+1, 7)
+  if (depot.damage < 3) pset(dp.x+5,dp.y, 7)
+  if (depot.damage < 2) pset(dp.x+3,dp.y, 7)
+  if (depot.damage < 1) pset(dp.x+1,dp.y, 7)
 
   -- draw a clock to indicate time until next order
   -- only appears for final 3rd of order time
