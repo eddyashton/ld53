@@ -155,7 +155,15 @@ function next_road(from, dir)
  return next_road(v, dir)
 end
 
-function _update() 
+function set_game_over()
+ game_over = true
+ final_score = score
+ play_time = t()
+end
+
+function _update()
+ if (game_over) return
+
  if btnp(🅾️) then
   target.blue = not target.blue
  end
@@ -209,10 +217,16 @@ function _update()
 
     if #candidates > 0 then
      local dest = rnd(candidates)
-      add(dest.demand, d.blue)
-     end
+     add(dest.demand, d.blue)
     end
+   else
+    d.damage += 1
+    if d.damage == 3 then
+     set_game_over()
+    end
+    d.damage_frames = 10
    end
+  end
  end
  
  if t() >= update_at then
@@ -494,6 +508,40 @@ function draw_clock_arm(centre, rad, frac, colour)
  )
 end
 
+function display_time(n)
+  local m = flr(n / 60)
+  local s = n % 60
+  s = flr(100 * s) / 100
+  return (m > 0 and (m .. " m ") or "") .. s .. " s"
+end
+
+-- print centered
+function printc(str, x, y, colour)
+ local w = print(str, 0, -20)
+ print(str, x-w/2, y-2, colour)
+end
+
+function draw_game_over_screen()
+ rectfill(0,8,128,16,0)
+ printc("yOU GOT fired!", 64, 12, 9)
+
+ rectfill(0,56,128,72,0)
+ printc("fINAL sCORE", 64, 60, 9)
+ printc(final_score or 0, 64, 68, 9)
+
+ rectfill(0, 104, 128, 120, 0)
+ printc("yOUR EMPLOYMENT LASTED", 64, 108, 9)
+ play_time = play_time or 0
+ printc(display_time(play_time),  64, 116, 9)
+
+ if t() - play_time > 3 then
+  scan_off = scan_off or 129
+  scan_end = print("(RESET AND LEVEL SELECT ON THE PAUSE MENU)", scan_off, 18, 0)
+  scan_off -= 1
+  if (scan_end < 0) scan_off = 129
+ end
+end
+
 function _draw()
  cls()
  pal()
@@ -504,6 +552,8 @@ function _draw()
   _data_start,
   _screen_size
  )
+
+ if (game_over) draw_game_over_screen() return
  
  -- draw all redirection arrows
  for cs, r in pairs(redirections) do
@@ -516,13 +566,14 @@ function _draw()
   draw_truck(truck)
  end
  
- -- draw all depot supplies
  for depot in all(depots) do
-  if depot.blue then
+ -- draw all depot supplies
+ if depot.blue then
    swap_red_to_blue()
   end
+  local dp = cell_to_world(depot.pos)
   local bl = v2_add(
-   cell_to_world(depot.pos),
+   dp,
    v2(2,4)
   )
   for n=1,depot.supply do
@@ -531,8 +582,13 @@ function _draw()
     bl.y-flr((n-1)/3),
     8
    )
+   pal()
   end
-  pal()
+
+  -- draw depot damage
+  if (depot.damage >= 1) pset(dp.x,dp.y+5, 0)
+  if (depot.damage >= 2) pset(dp.x,dp.y+3, 0)
+  if (depot.damage >= 3) pset(dp.x,dp.y+1, 0)
 
   -- draw a clock to indicate time until next order
   -- only appears for final 3rd of order time
@@ -604,9 +660,8 @@ end
 -->8
 -- world map
 function get_next_order_time()
- return t() + 2 --5 + rnd(10)
+ return t() + 2--5 + rnd(10)
 end
-
 
 -- load world from sprite map
 function load_world(xoff, yoff)
@@ -647,6 +702,7 @@ function load_world(xoff, yoff)
       next_order = get_next_order_time(),
       prev_order = t(),
       supply = 0,
+      damage = 0,
      }
     )
    elseif v == house or v == tower then
@@ -829,11 +885,11 @@ function add_level_select_menu_item()
 __gfx__
 00000000000000000088800008880003666677776666777733333333eeeeeeeeeeeeeee000040000bbbbbbbb0000000000000000000000000000000000000000
 00000000070007000887880088788006666666666666666766666666e5555555e00300e000454000bbbbbbbb0000000000000000000000000000000000000000
-00700700007070008877788888878806666666666666666766666666e5888885e03330e004555400bbbbbbbb0000000000000000000000000000000000000000
+00700700007070008877788888878806666666666666666766666666e7888885e03330e004555400bbbbbbbb0000000000000000000000000000000000000000
 00077000000700008787878877777806666666666666666766666666e5877785e33333e045555540bbbbbbbb0000000000000000000000000000000000000000
-00077000007070008887888888878807677767776777677777776777e5877785e03430e005457500bbbbbbbb0000000000000000000000000000000000000000
+00077000007070008887888888878807677767776777677777776777e7877785e03430e005457500bbbbbbbb0000000000000000000000000000000000000000
 00700700070007000887880088788006666666666666666676666666e5877785e00400e005457500bbbbbbbb0000000000000000000000000000000000000000
-00000000000000000088800008880006666666666666666676666666e5888885e00400e005455500bbbbbbbb0000000000000000000000000000000000000000
+00000000000000000088800008880006666666666666666676666666e7888885e00400e005455500bbbbbbbb0000000000000000000000000000000000000000
 00000000000000000000000000000006666666666666666676666666e5555555eeeeeee000000000bbbbbbbb0000000000000000000000000000000000000000
 87786668586878663666766633333333333333330000000000000000eeeeeeeee0330e0055555550b33bbbbb0000000000000000000000000000000000000000
 8778586878655566366676663666666666666666000000000000000000000000e3333e00575757503333b3bb0000000000000000000000000000000000000000
@@ -1021,3 +1077,5 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 
+__sfx__
+001700001805018050130501805018050180501d050190501d050170501d0501c050190501a0501b0501b0501b050190501805017050160501855015050150501755014050140501405013050120501105011050
