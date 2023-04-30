@@ -97,7 +97,8 @@ function interact(tr, c)
    adj_depot.supply -= moved
    return true
   end
- else
+ end
+ if tr.load > 0 then
   -- if you're adjacent to a building, drop off!
   local dest, deliverable = adjacent_demand(c, tr.blue)
   if dest != nil then
