@@ -537,8 +537,8 @@ function _draw()
  end
  
  -- print score!
- color(9)
- print(score.."\0")
+ color(0)
+ print(score.."\0", 1, 1)
  for _, s in ipairs(recent_scores) do
   local blue = s[2]
   color(blue and 12 or 8)
