@@ -239,7 +239,7 @@ function _update()
   end
   
   function mark_tut_move(c)
-   if tutorial_state.moved_cursor then
+   if tutorial_state and tutorial_state.moved_cursor then
     tutorial_state.moved_cursor[c] = true
    end
   end
@@ -718,7 +718,7 @@ end
 -->8
 -- world map
 function get_next_order_time()
- if (tutorial_state.pause_depots) return nil
+ if (tutorial_state and tutorial_state.pause_depots) return nil
  return t() + 2--5 + rnd(10)
 end
 
@@ -915,13 +915,6 @@ function mk_printc(k, ...)
   end
 end
 
-function mk_remover(k)
- return function() custom_draws[k] = nil end
-end
-
-function mk_delay_trigger(n)
- return function() return t() >= n end
-end
 
 function checkbox(check, s, x, y, c)
  local done = check()
@@ -931,22 +924,54 @@ end
 
 tutorial_events = {
   -- 0th step - welcome message
-  {nil, mk_printc("tut", "welcome to your first day!", 64,64, 0)},
+  {
+   nil,
+   function()
+    custom_draws["tut"] = function()
+     printc("WELCOME TO YOUR FIRST DAY AT", 64,56, 0)
+     printc("poppycock's", 64,68, 0)
+     printc("perfect", 64,75, 0)
+     printc("parcels", 64,82, 0)
+    end
+   end
+  },
+
+  {
+   function()
+    return t() > 4
+   end,
+   function()
+    custom_draws["tut"] = function()
+     printc("your job is to", 64,56, 0)
+     printc("remote-control the lorries", 64,62, 0)
+     printc("to deliver parcels", 64,68, 0)
+
+     if t() > 8 then
+      printc("(AND DON'T LET", 64,78, 0)
+      printc("ANYONE KNOW THEY'RE", 64,84, 0)
+      printc("NOT SELF-DRIVING)", 64,90, 0)
+     end
+     if t() > 12 then
+      printc("let's go through the basics", 64, 104, 0)
+     end
+    end
+   end
+  },
 
   -- 1st step, move cursor
   {
    function()
     tutorial_state.moved_cursor = {}
-    return t() > 0 --4 -- todo
+    return t() > 16
    end,
    function()
     custom_draws["tut"] = function()
-     print("move cursor:", 24, 70, 0)
+     print("move your rc cursor:", 24, 56, 0)
      local mc = tutorial_state.moved_cursor
-     checkbox(function() return mc and mc[⬅️] end, "⬅️", 26, 78,0)
-     checkbox(function() return mc and mc[➡️] end, "➡️", 26, 84,0)
-     checkbox(function() return mc and mc[⬆️] end, "⬆️", 26, 90,0)
-     checkbox(function() return mc and mc[⬇️] end, "⬇️", 26, 96,0)
+     checkbox(function() return mc and mc[⬅️] end, "⬅️", 32, 70,0)
+     checkbox(function() return mc and mc[➡️] end, "➡️", 32, 76,0)
+     checkbox(function() return mc and mc[⬆️] end, "⬆️", 32, 82,0)
+     checkbox(function() return mc and mc[⬇️] end, "⬇️", 32, 88,0)
 
      if mc and mc[⬅️] and mc[➡️] and mc[⬆️] and mc[⬇️] then
       tutorial_state.moved_cursor = nil
@@ -1009,7 +1034,27 @@ tutorial_events = {
       printc("orders will now arrive", 64, 56)
       printc("at the depot", 64, 64)
       checkbox(function() return tutorial_state.collected end, "collect an order by\npassing the depot", 24,80, 0)
-      checkbox(function() return tutorial_state.delivered end, "deliver an order to\na window of the same colour", 24,96, 0)
+      checkbox(function() return tutorial_state.delivered end, "deliver an order to\na customer window\nof the same colour", 24,96, 0)
+     end
+    end
+  },
+
+  -- 5th step, rules
+  {
+    function()
+     if tutorial_state.collected and tutorial_state.delivered then
+      return true
+     end
+    end,
+    function()
+     custom_draws["tut"] = function()
+      printc("looking good! now try a real", 64, 56)
+      printc("level from the pause menu", 64, 64)
+
+      print("be warned:", 10, 76)
+      print(" - depots and lorries will\n   get full", 10, 82)
+      print(" - full depots will earn\n   a strike", 10, 94)
+      print(" - 3 strikes and you're\n   fired!", 10, 106)
      end
     end
   },
