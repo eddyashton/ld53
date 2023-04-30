@@ -543,14 +543,21 @@ function draw_game_over_screen()
  rectfill(0,8,128,16,0)
  printc("yOU GOT fired!", 64, 12, 9)
 
- rectfill(0,56,128,72,0)
- printc("fINAL sCORE", 64, 60, 9)
- printc(final_score or 0, 64, 68, 9)
+ rectfill(0,40,128,56,0)
+ printc("fINAL sCORE", 64, 44, 9)
+ printc(final_score or 0, 64, 52, 9)
 
- rectfill(0, 104, 128, 120, 0)
- printc("yOUR EMPLOYMENT LASTED", 64, 108, 9)
  play_time = play_time or 0
- printc(display_time(play_time),  64, 116, 9)
+ rectfill(0, 72, 128, 88, 0)
+ printc("yOUR EMPLOYMENT LASTED", 64, 76, 9)
+ printc(display_time(play_time),  64, 84, 9)
+
+ if rank == nil then
+  rank = rnd{"piddly", "pathetic", "proletarian", "poor", "paltry", "pitiful"}
+ end
+ rectfill(0, 104, 128, 120, 0)
+ printc("pOPPYCOCK PROCLAIMS YOU", 64, 108, 9)
+ printc(rank, 64, 116, 9)
 
  if t() - play_time > 3 then
   scan_off = scan_off or 129
